@@ -16,13 +16,23 @@ import {
 	TextDocumentPositionParams,
 	CompletionItemKind
 } from 'vscode-languageserver';
-import { TextDocumentSyncKind } from 'vscode-languageserver-protocol';
+import { TextDocumentSyncKind, MarkupKind, MarkupContent } from 'vscode-languageserver-protocol';
 import axios from 'axios';
 
 const getWordAt = (str: string, pos: number) => {
 	const left = str.slice(0, pos + 1).search(/\S+$/);
 	const	right = str.slice(pos).search(/\s/);
 	return right < 0 ? str.slice(left) : str.slice(left, right + pos);
+};
+
+const getMarkup = (word: string, translation: string, dictionary: any): MarkupContent => {
+	return {
+		kind: MarkupKind.Markdown,
+		value: [
+			`**${word}** - ${translation} (RU)`,
+			...dictionary.map((dictionaryItem: any) => `- *${dictionaryItem.fl}* ${dictionaryItem.shortdef.join('; ')}`)
+		].join('\n')
+	};
 };
 
 class EmojiLanguageServer {
@@ -89,16 +99,32 @@ class EmojiLanguageServer {
 		const line = lines[lineNumber];
 
 		const word = getWordAt(line, character);
-		console.log(word);
-
 		try {
-			// hoverInfo = await getHoverInfo(position, document);
+			const { data: translationData } = await axios('https://translate.yandex.net/api/v1.5/tr.json/translate', {
+				params: {
+					key: process.env.YANDEXTRANSLATE_API_KEY,
+					text: word,
+					lang: 'ru',
+				}
+			});
+			const { data: dictionaryData } = await axios(`https://dictionaryapi.com/api/v3/references/thesaurus/json/${word}`, {
+				params: {
+					key: process.env.DICTIONARY_API_KEY
+				}
+			});
+
+			const dictionary = dictionaryData.slice(0, 3).map((dictionaryItem: any) => ({
+				fl: dictionaryItem.fl,
+				shortdef: dictionaryItem.shortdef
+			}));
+			const translation = translationData.text.join(' ');
+
+			const contents = getMarkup(word, translation, dictionary);
+			return { contents };
 		} catch (e) {
 
 		}
-		return {
-			contents: 'haha'
-		};
+		return { contents: 'Translation not found' };
 	}
 
 	private onCompletion = async (completionParams: CompletionParams): Promise<CompletionItem[] | CompletionList | null> => {

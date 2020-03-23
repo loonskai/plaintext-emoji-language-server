@@ -12,7 +12,8 @@
 			"preLaunchTask": {
 				"type": "npm",
 				"script": "watch"
-			}
+			},
+			"envFile": "${workspaceRoot}/.env"
 		},
 		{
 			"type": "node",
@@ -20,7 +21,8 @@
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
-			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+			"outFiles": ["${workspaceRoot}/server/out/**/*.js"],
+			"envFile": "${workspaceRoot}/.env"
 		},
 		{
 			"name": "Language Server E2E Test",
