@@ -5,6 +5,7 @@ import {
 	createConnection,
 	Diagnostic,
 	DidChangeTextDocumentParams,
+	DidOpenTextDocumentParams,
 	Hover,
 	IConnection,
 	InitializeParams,
@@ -17,6 +18,12 @@ import {
 } from 'vscode-languageserver';
 import { TextDocumentSyncKind } from 'vscode-languageserver-protocol';
 import axios from 'axios';
+
+const getWordAt = (str: string, pos: number) => {
+	const left = str.slice(0, pos + 1).search(/\S+$/);
+	const	right = str.slice(pos).search(/\s/);
+	return right < 0 ? str.slice(left) : str.slice(left, right + pos);
+};
 
 class EmojiLanguageServer {
 	private readonly connection: IConnection;
@@ -36,11 +43,12 @@ class EmojiLanguageServer {
 		const { connection } = this;
 		connection.onInitialize(this.onInitialize);
 
+		connection.onDidOpenTextDocument(this.onDidOpenTextDocument);
 		connection.onDidChangeTextDocument(this.onDidChangeTextDocument);
 
 		connection.onCompletion(this.onCompletion);
 		connection.onCompletionResolve(this.onCompletionResolve);
-		// connection.onHover(this.onHover);
+		connection.onHover(this.onHover);
 	}
 	
 	private onInitialize = (params: InitializeParams): InitializeResult => {
@@ -56,25 +64,41 @@ class EmojiLanguageServer {
 		};
 	}
 
+	private onDidOpenTextDocument = (event: DidOpenTextDocumentParams): void => {
+		const { textDocument } = event;
+		const { uri } = textDocument;
+		this.openDocuments[uri] = textDocument;
+	}
+
 	private onDidChangeTextDocument = async (event: DidChangeTextDocumentParams): Promise<void> => {
-		const {	contentChanges, textDocument	} = event;
-		const {	uri	} = textDocument;
+		const { contentChanges, textDocument } = event;
+		const { uri } = textDocument;
 		const diagnostics: Diagnostic[] = [];
 		this.openDocuments[uri] = contentChanges[0];
 		this.connection.sendDiagnostics({uri, diagnostics});
 	}
 
-	private onHover = async (event: TextDocumentPositionParams): Promise<Hover | void> => {
-		const {	position, textDocument	} = event;
+	private onHover = async (event: TextDocumentPositionParams): Promise<Hover> => {
+		const {	position, textDocument } = event;
 		const {	uri	} = textDocument;
 		const document = this.openDocuments[uri];
-		let hoverInfo;
+		const { text } = document;
+
+		const lines = text.split('\n');
+		const { line: lineNumber, character } = position;
+		const line = lines[lineNumber];
+
+		const word = getWordAt(line, character);
+		console.log(word);
+
 		try {
 			// hoverInfo = await getHoverInfo(position, document);
 		} catch (e) {
 
 		}
-		return hoverInfo;
+		return {
+			contents: 'haha'
+		};
 	}
 
 	private onCompletion = async (completionParams: CompletionParams): Promise<CompletionItem[] | CompletionList | null> => {
