@@ -3,12 +3,20 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as testRunner from 'vscode/lib/testrunner';
+import * as path from "path";
 
-testRunner.configure({
-    ui: 'bdd',
-    useColors: true,
-    timeout: 100000
-});
+import { runTests } from "vscode-test";
 
-module.exports = testRunner;
+async function main(): Promise<void> {
+  try {
+    const extensionDevelopmentPath = path.resolve(__dirname, "../../");
+    const extensionTestsPath = path.resolve(__dirname, "./suite/index");
+
+    await runTests({ extensionDevelopmentPath, extensionTestsPath });
+  } catch (err) {
+    console.error("Failed to run tests");
+    process.exit(1);
+  }
+}
+
+main();
